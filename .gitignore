@@ -4,4 +4,8 @@ __pycache__/
 .DS_Store
 .env
 *.log
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+data/vectorstore/
 W2s(Confidential)/

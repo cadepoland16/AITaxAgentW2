@@ -1,14 +1,47 @@
 # AITaxAgentW2
 
-Local-first W-2 agent CLI using Python, LangChain, and a local model.
+Local-first W-2 AI agent CLI built with Python, LangChain, Ollama, and Chroma.
 
-## Current status
-- Project scaffolded
-- CLI commands stubbed: `ingest`, `ask`, `validate`
+## Goals
+- Keep sensitive tax data local by default
+- Use retrieval-augmented generation (RAG) for grounded W-2 guidance
+- Provide a practical CLI workflow for ingestion, Q&A, and validation
 
-## Run
+## Current Status
+- Core CLI scaffold exists
+- Commands stubbed: `ingest`, `ask`, `validate`
+- Repository standards and CI baseline added
+
+## Tech Stack
+- Python
+- Typer CLI
+- LangChain
+- Ollama (local model runtime)
+- Chroma (local vector store)
+
+## Quickstart
 ```bash
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-PYTHONPATH=src python -m w2_agent.cli --help
+pip install setuptools wheel
+pip install -e .
+w2 --help
 ```
+
+## Security and Privacy
+- W-2 files and PII must remain local and untracked
+- `W2s(Confidential)/` is gitignored
+- Review `SECURITY.md` before sharing logs or issue details
+
+## Contributing
+Please read:
+- `CONTRIBUTING.md`
+- `CODE_OF_CONDUCT.md`
+- `SECURITY.md`
+
+## License
+MIT License. See `LICENSE`.
+
+## Disclaimer
+This project is for informational and workflow-assist purposes only and does not provide legal, tax, or financial advice.

@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aitaxagentw2"
+version = "0.1.0"
+description = "Local-first W-2 AI agent CLI using Python, LangChain, and Ollama"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "Cade Poland" }
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pre-commit>=3.7.0",
+  "ruff>=0.6.0",
+  "pytest>=8.0.0"
+]
+
+[project.scripts]
+w2 = "w2_agent.cli:app"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
