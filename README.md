@@ -41,7 +41,7 @@ Please read:
 - `SECURITY.md`
 
 ## License
-[MIT License](LICENSE)
+MIT License. See [LICENSE](LICENSE).
 
 ## Disclaimer
 This project is for informational and workflow-assist purposes only and does not provide legal, tax, or financial advice.
