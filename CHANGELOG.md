@@ -18,3 +18,9 @@ and this project aims to follow Semantic Versioning.
 - Added local Chroma persistence and configurable collection option for ingestion
 - Implemented `w2 ask` with vector retrieval, local Ollama generation, and citations
 - Implemented `w2 validate` with W-2 field parsing and warning-oriented checks
+
+## [0.1.2] - 2026-02-21
+### Improved
+- Hardened W-2 extraction against PDF text artifacts and split-number formatting
+- Expanded field-detection patterns for Box 1/2/3/5 and state/local box labels
+- Improved Box 12 parsing for `12a/12b/12c/12d` and inline `Code-Box 12` formats

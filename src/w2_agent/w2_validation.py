@@ -7,7 +7,12 @@ import re
 from langchain_community.document_loaders import PyPDFLoader
 
 
-_AMOUNT_PATTERN = r"([0-9][0-9,]*(?:\.[0-9]{2})?)"
+_AMOUNT_PATTERN = (
+    r"("
+    r"[0-9][0-9,]*(?:\.[0-9]{2})"        # standard decimal amount
+    r"|[0-9]{1,3}\s+[0-9]{3}\s+[0-9]{2}"  # split thousands, e.g. 5 262 70
+    r")"
+)
 
 
 @dataclass
@@ -27,32 +32,87 @@ def load_w2_text(path: Path) -> str:
     raise ValueError("Unsupported file type. Use .pdf, .txt, or .md")
 
 
+def _to_float(raw: str) -> float | None:
+    token = raw.strip()
+    if re.fullmatch(r"[0-9]{1,3}\s+[0-9]{3}\s+[0-9]{2}", token):
+        a, b, c = re.split(r"\s+", token)
+        token = f"{a}{b}.{c}"
+    cleaned = token.replace(",", "")
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
+def _normalize(text: str) -> str:
+    # Normalize whitespace and punctuation noise common in PDF extraction.
+    squashed = re.sub(r"[\t\r\f\v]+", " ", text)
+    squashed = re.sub(r"\s+", " ", squashed)
+    # Convert split-money sequences into decimal format for regex matching.
+    squashed = re.sub(r"\b([0-9]{1,3})\s+([0-9]{3})\s+([0-9]{2})\b", r"\1,\2.\3", squashed)
+    return squashed.strip()
+
+
 def _first_amount_match(text: str, patterns: list[str]) -> float | None:
     for pattern in patterns:
         match = re.search(pattern, text, flags=re.IGNORECASE)
         if not match:
             continue
-        raw = match.group(1).replace(",", "")
-        try:
-            return float(raw)
-        except ValueError:
-            continue
+        value = _to_float(match.group(1))
+        if value is not None:
+            return value
     return None
 
 
+def _extract_by_keywords(text: str, keyword_patterns: list[str]) -> float | None:
+    raw_text = text
+    normalized = _normalize(text)
+
+    patterns: list[str] = []
+    for keyword in keyword_patterns:
+        # Same-line/nearby value in raw extracted text.
+        patterns.append(rf"(?:{keyword})[^0-9$]{{0,120}}\$?{_AMOUNT_PATTERN}")
+        # Value-first cases where amount appears before truncated label in PDFs.
+        patterns.append(rf"\$?{_AMOUNT_PATTERN}[^0-9A-Za-z]{{0,120}}(?:{keyword})")
+        # Normalized fallback with bigger gap.
+        patterns.append(rf"(?:{keyword})[^0-9$]{{0,180}}\$?{_AMOUNT_PATTERN}")
+
+    value = _first_amount_match(raw_text, patterns)
+    if value is not None:
+        return value
+    return _first_amount_match(normalized, patterns)
+
+
 def _extract_box12_codes(text: str) -> list[tuple[str, float]]:
-    # Capture common "D 12000.00" style pairs near box-12 references.
     candidates: list[tuple[str, float]] = []
     lines = text.splitlines()
+
+    # Strong signal: explicit box slot labels, e.g. "12a D 5000.00".
+    slot_pattern = re.compile(r"\b12[abcd]?\s*[:\-]?\s*([A-Za-z]{1,2})\s+\$?" + _AMOUNT_PATTERN)
+    inline_box12_pattern = re.compile(
+        r"\b([A-Za-z]{1,2})\s*[-:]?\s*box\s*12[^0-9$]{0,50}\$?" + _AMOUNT_PATTERN,
+        flags=re.IGNORECASE,
+    )
+
     for line in lines:
-        if "12" not in line and "box 12" not in line.lower():
+        for code, amount in slot_pattern.findall(line):
+            value = _to_float(amount)
+            if value is not None:
+                candidates.append((code.upper(), value))
+        for code, amount in inline_box12_pattern.findall(line):
+            value = _to_float(amount)
+            if value is not None:
+                candidates.append((code.upper(), value))
+
+    # Fallback: lines explicitly mentioning Box 12 with code/value pairs.
+    for line in lines:
+        if "box 12" not in line.lower() and "12" not in line:
             continue
         for code, amount in re.findall(r"\b([A-Za-z]{1,2})\s+\$?" + _AMOUNT_PATTERN, line):
-            try:
-                candidates.append((code.upper(), float(amount.replace(",", ""))))
-            except ValueError:
-                continue
-    # Deduplicate while preserving order.
+            value = _to_float(amount)
+            if value is not None:
+                candidates.append((code.upper(), value))
+
     deduped: list[tuple[str, float]] = []
     seen: set[tuple[str, float]] = set()
     for item in candidates:
@@ -64,55 +124,73 @@ def _extract_box12_codes(text: str) -> list[tuple[str, float]]:
 
 
 def parse_w2_fields(text: str) -> dict[str, float | list[tuple[str, float]] | None]:
+    box1 = _extract_by_keywords(
+        text,
+        [
+            r"(?:box\s*1|\b1\b)\s*wages(?:,?\s*tips)?(?:,?\s*other\s*compensation)?",
+            r"box\s*1\s*of\s*w-?2",
+        ],
+    )
+    box2 = _extract_by_keywords(
+        text,
+        [
+            r"(?:box\s*2|\b2\b)\s*federal\s*income\s*tax\s*withheld",
+            r"box\s*2\s*of\s*w-?2",
+        ],
+    )
+    box3 = _extract_by_keywords(
+        text,
+        [
+            r"(?:box\s*3|\b3\b)\s*social\s*security\s*wages",
+            r"box\s*3\s*of\s*w-?2",
+        ],
+    )
+    box5 = _extract_by_keywords(
+        text,
+        [
+            r"(?:box\s*5|\b5\b)\s*medicare\s*wages(?:\s*and\s*tips)?",
+            r"box\s*5\s*of\s*w-?2",
+        ],
+    )
+
+    state_wages = _extract_by_keywords(
+        text,
+        [
+            r"state\s*wages(?:,?\s*tips)?(?:,?\s*etc\.?)*",
+            r"(?:box\s*16|\b16\b)\s*state\s*wages",
+        ],
+    )
+    state_withholding = _extract_by_keywords(
+        text,
+        [
+            r"state\s*income\s*tax",
+            r"(?:box\s*17|\b17\b)\s*state\s*income\s*tax",
+        ],
+    )
+    local_wages = _extract_by_keywords(
+        text,
+        [
+            r"local\s*wages(?:,?\s*tips)?(?:,?\s*etc\.?)*",
+            r"(?:box\s*18|\b18\b)\s*local\s*wages",
+        ],
+    )
+    local_withholding = _extract_by_keywords(
+        text,
+        [
+            r"local\s*income\s*tax",
+            r"(?:box\s*19|\b19\b)\s*local\s*income\s*tax",
+        ],
+    )
+
     return {
-        "box1_wages": _first_amount_match(
-            text,
-            [
-                rf"(?:Box\s*1|1\s+Wages.*?compensation)\s*[:\-]?\s*\$?{_AMOUNT_PATTERN}",
-            ],
-        ),
-        "box2_fed_withholding": _first_amount_match(
-            text,
-            [
-                rf"(?:Box\s*2|2\s+Federal income tax withheld)\s*[:\-]?\s*\$?{_AMOUNT_PATTERN}",
-            ],
-        ),
-        "box3_ss_wages": _first_amount_match(
-            text,
-            [
-                rf"(?:Box\s*3|3\s+Social security wages)\s*[:\-]?\s*\$?{_AMOUNT_PATTERN}",
-            ],
-        ),
-        "box5_medicare_wages": _first_amount_match(
-            text,
-            [
-                rf"(?:Box\s*5|5\s+Medicare wages(?: and tips)?)\s*[:\-]?\s*\$?{_AMOUNT_PATTERN}",
-            ],
-        ),
-        "state_wages": _first_amount_match(
-            text,
-            [
-                rf"(?:State wages.*?etc\.?)\s*[:\-]?\s*\$?{_AMOUNT_PATTERN}",
-            ],
-        ),
-        "state_withholding": _first_amount_match(
-            text,
-            [
-                rf"(?:State income tax)\s*[:\-]?\s*\$?{_AMOUNT_PATTERN}",
-            ],
-        ),
-        "local_wages": _first_amount_match(
-            text,
-            [
-                rf"(?:Local wages.*?etc\.?)\s*[:\-]?\s*\$?{_AMOUNT_PATTERN}",
-            ],
-        ),
-        "local_withholding": _first_amount_match(
-            text,
-            [
-                rf"(?:Local income tax)\s*[:\-]?\s*\$?{_AMOUNT_PATTERN}",
-            ],
-        ),
+        "box1_wages": box1,
+        "box2_fed_withholding": box2,
+        "box3_ss_wages": box3,
+        "box5_medicare_wages": box5,
+        "state_wages": state_wages,
+        "state_withholding": state_withholding,
+        "local_wages": local_wages,
+        "local_withholding": local_withholding,
         "box12_codes": _extract_box12_codes(text),
     }
 
