@@ -17,3 +17,4 @@ and this project aims to follow Semantic Versioning.
 - Implemented `w2 ingest` for `.txt`, `.md`, and `.pdf` sources
 - Added local Chroma persistence and configurable collection option for ingestion
 - Implemented `w2 ask` with vector retrieval, local Ollama generation, and citations
+- Implemented `w2 validate` with W-2 field parsing and warning-oriented checks

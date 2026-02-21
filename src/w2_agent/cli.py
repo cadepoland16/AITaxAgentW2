@@ -16,6 +16,7 @@ from w2_agent.config import (
     VECTOR_DIR,
     W2_DIR,
 )
+from w2_agent.w2_validation import load_w2_text, parse_w2_fields, validate_w2_fields
 
 app = typer.Typer(help="W-2 Agent CLI (local, LangChain, Ollama)")
 console = Console()
@@ -174,9 +175,48 @@ def ask(
 
 
 @app.command()
-def validate(w2_file: str = typer.Option(..., "--w2-file")):
-    """Validate parsed W-2 data (placeholder)."""
-    console.print(f"[yellow]TODO[/yellow] validate W-2: {w2_file}")
+def validate(
+    w2_file: str = typer.Option(..., "--w2-file"),
+    show_parsed: bool = typer.Option(False, "--show-parsed"),
+):
+    """Validate a W-2 file and return practical review warnings."""
+    file_path = Path(w2_file).expanduser().resolve()
+    if not file_path.exists() or not file_path.is_file():
+        console.print(f"[red]W-2 file not found:[/red] {file_path}")
+        raise typer.Exit(code=1)
+
+    try:
+        text = load_w2_text(file_path)
+    except Exception as exc:
+        console.print(f"[red]Could not read W-2 file:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    parsed = parse_w2_fields(text)
+    issues = validate_w2_fields(parsed)
+
+    console.print("[green]Validation Summary[/green]")
+    console.print(f"File: {file_path}")
+    console.print(f"Issues found: {len(issues)}")
+
+    if show_parsed:
+        console.print("\n[green]Parsed Fields[/green]")
+        for key, value in parsed.items():
+            if key == "box12_codes" and isinstance(value, list):
+                rendered = ", ".join(f"{code}={amount:.2f}" for code, amount in value) or "(none)"
+                console.print(f"- {key}: {rendered}")
+            else:
+                console.print(f"- {key}: {value}")
+
+    if not issues:
+        console.print("\n[green]No validation issues detected.[/green]")
+        console.print("Informational only, not tax advice.")
+        return
+
+    console.print("\n[yellow]Review Warnings[/yellow]")
+    for issue in issues:
+        console.print(f"- [{issue.level.upper()}] {issue.code}: {issue.message}")
+
+    console.print("\nInformational only, not tax advice.")
 
 
 if __name__ == "__main__":
