@@ -7,5 +7,6 @@ W2_DIR = DATA_DIR / "w2"
 VECTOR_DIR = DATA_DIR / "vectorstore"
 DEFAULT_COLLECTION = "tax_docs"
 
-DEFAULT_LLM_MODEL = "llama3.1:8b"
+DEFAULT_LLM_MODEL = "llama3.2:latest"
 DEFAULT_EMBED_MODEL = "nomic-embed-text"
+DEFAULT_TOP_K = 4
