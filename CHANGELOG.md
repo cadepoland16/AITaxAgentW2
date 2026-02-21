@@ -24,3 +24,9 @@ and this project aims to follow Semantic Versioning.
 - Hardened W-2 extraction against PDF text artifacts and split-number formatting
 - Expanded field-detection patterns for Box 1/2/3/5 and state/local box labels
 - Improved Box 12 parsing for `12a/12b/12c/12d` and inline `Code-Box 12` formats
+
+## [0.1.3] - 2026-02-21
+### Improved
+- Upgraded `w2 ask` with relevance-threshold gating (`--min-relevance`) to reduce hallucinations
+- Added confidence reporting derived from retrieval relevance scores
+- Improved source output with deduplicated citations and context snippets

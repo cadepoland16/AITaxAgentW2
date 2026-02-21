@@ -11,6 +11,8 @@ from w2_agent.config import (
     DEFAULT_COLLECTION,
     DEFAULT_EMBED_MODEL,
     DEFAULT_LLM_MODEL,
+    DEFAULT_MIN_RELEVANCE,
+    DEFAULT_SNIPPET_CHARS,
     DEFAULT_TOP_K,
     DOCS_DIR,
     VECTOR_DIR,
@@ -36,15 +38,34 @@ def _format_context(docs: list[Document]) -> str:
     return "\n\n".join(sections)
 
 
-def _format_citations(docs: list[Document]) -> list[str]:
-    citations: list[str] = []
+def _format_citations_with_snippets(
+    docs_with_scores: list[tuple[Document, float]],
+    snippet_chars: int = DEFAULT_SNIPPET_CHARS,
+) -> list[tuple[str, float, str]]:
+    results: list[tuple[str, float, str]] = []
     seen: set[str] = set()
-    for doc in docs:
+    for doc, score in docs_with_scores:
         source = str(doc.metadata.get("source", "unknown_source"))
-        if source not in seen:
-            seen.add(source)
-            citations.append(source)
-    return citations
+        if source in seen:
+            continue
+        seen.add(source)
+        snippet = " ".join(doc.page_content.strip().split())[:snippet_chars]
+        if len(snippet) == snippet_chars:
+            snippet = snippet.rstrip() + "..."
+        results.append((source, score, snippet))
+    return results
+
+
+def _confidence_label(scores: list[float], min_relevance: float) -> str:
+    if not scores:
+        return "low"
+    avg = sum(scores) / len(scores)
+    top = max(scores)
+    if top >= min_relevance + 0.30 and avg >= min_relevance + 0.20:
+        return "high"
+    if top >= min_relevance + 0.15:
+        return "medium"
+    return "low"
 
 
 @app.command()
@@ -117,10 +138,15 @@ def ask(
     w2_file: str = typer.Option("", "--w2-file"),
     collection: str = typer.Option(DEFAULT_COLLECTION, "--collection"),
     top_k: int = typer.Option(DEFAULT_TOP_K, "--top-k"),
+    min_relevance: float = typer.Option(DEFAULT_MIN_RELEVANCE, "--min-relevance"),
+    show_context: bool = typer.Option(False, "--show-context"),
 ):
-    """Ask a W-2 question with local RAG and source citations."""
+    """Ask a W-2 question with local RAG, confidence gating, and citations."""
     if top_k < 1:
         console.print("[red]--top-k must be at least 1[/red]")
+        raise typer.Exit(code=1)
+    if not 0 <= min_relevance <= 1:
+        console.print("[red]--min-relevance must be between 0 and 1[/red]")
         raise typer.Exit(code=1)
 
     if not VECTOR_DIR.exists():
@@ -134,20 +160,33 @@ def ask(
         embedding_function=embeddings,
         persist_directory=str(VECTOR_DIR),
     )
-    docs = vectorstore.similarity_search(question, k=top_k)
-    if not docs:
+    docs_with_scores = vectorstore.similarity_search_with_relevance_scores(question, k=top_k)
+    if not docs_with_scores:
         console.print("[yellow]No matching context found.[/yellow]")
         console.print("Try ingesting docs or increasing coverage in data/docs.")
         raise typer.Exit(code=1)
 
+    filtered = [(doc, score) for doc, score in docs_with_scores if score >= min_relevance]
+    if not filtered:
+        console.print("[yellow]Insufficient context quality for a grounded answer.[/yellow]")
+        console.print("Try lowering --min-relevance, adding better source docs, or re-running ingest.")
+        raise typer.Exit(code=1)
+
+    docs = [doc for doc, _ in filtered]
+    scores = [score for _, score in filtered]
+    confidence = _confidence_label(scores, min_relevance)
     context_text = _format_context(docs)
     w2_hint = f"\nUser W-2 file path (optional context): {w2_file}" if w2_file else ""
     user_prompt = (
         f"Question: {question}{w2_hint}\n\n"
         "Context documents:\n"
         f"{context_text}\n\n"
-        "Provide an answer grounded in the context. "
-        "If unsure, say what is missing. End with a short note: "
+        "Respond using this structure exactly:\n"
+        "Answer: <concise answer>\n"
+        "Why: <brief grounding in context>\n"
+        "Limits: <what is uncertain or missing>\n\n"
+        "Stay grounded in the provided context. "
+        "If unsure, state insufficient context instead of guessing. End with: "
         "'Informational only, not tax advice.'"
     )
 
@@ -161,9 +200,17 @@ def ask(
 
     console.print("[green]Answer[/green]")
     console.print(str(response.content).strip())
+    console.print("\n[green]Confidence[/green]")
+    console.print(f"{confidence} (top relevance: {max(scores):.3f}, avg relevance: {sum(scores)/len(scores):.3f})")
+
+    if show_context:
+        console.print("\n[green]Retrieved Context[/green]")
+        console.print(context_text[:4000] + ("..." if len(context_text) > 4000 else ""))
+
     console.print("\n[green]Sources[/green]")
-    for source in _format_citations(docs):
-        console.print(f"- {source}")
+    for source, score, snippet in _format_citations_with_snippets(filtered):
+        console.print(f"- {source} (relevance={score:.3f})")
+        console.print(f"  snippet: {snippet}")
 
     if w2_file:
         console.print(f"Using W-2 file: {w2_file}")
