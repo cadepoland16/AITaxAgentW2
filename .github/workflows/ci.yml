@@ -28,6 +28,11 @@ jobs:
           pip install ruff==0.15.2
           ruff check src
 
+      - name: Pytest
+        run: |
+          pip install pytest
+          pytest -q
+
       - name: CLI smoke test
         run: |
           w2 --help

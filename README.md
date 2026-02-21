@@ -61,6 +61,12 @@ w2 validate --w2-file "W2s(Confidential)/your-w2.pdf" --show-parsed
 The command parses core fields and prints warning-style checks for review.
 Extraction quality depends on PDF text readability; image-heavy/scanned layouts may still require OCR improvements.
 
+## Run Tests
+```bash
+pytest -q
+```
+Includes unit tests for parsing/validation logic and CLI validation smoke tests.
+
 ## Security and Privacy
 - W-2 files and PII must remain local and untracked
 - `W2s(Confidential)/` is gitignored

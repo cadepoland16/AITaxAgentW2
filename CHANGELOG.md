@@ -30,3 +30,8 @@ and this project aims to follow Semantic Versioning.
 - Upgraded `w2 ask` with relevance-threshold gating (`--min-relevance`) to reduce hallucinations
 - Added confidence reporting derived from retrieval relevance scores
 - Improved source output with deduplicated citations and context snippets
+
+## [0.1.4] - 2026-02-21
+### Added
+- Added pytest-based Step 8 test coverage for W-2 parsing, validation rules, and CLI validate behavior
+- Added CI pytest step to run tests on pushes and pull requests
