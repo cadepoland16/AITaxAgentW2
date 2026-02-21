@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
-import re
 
 from langchain_community.document_loaders import PyPDFLoader
-
 
 _AMOUNT_PATTERN = (
     r"("
@@ -20,6 +19,9 @@ class ValidationIssue:
     level: str
     code: str
     message: str
+
+
+ParsedW2 = dict[str, float | list[tuple[str, float]] | None]
 
 
 def load_w2_text(path: Path) -> str:
@@ -195,7 +197,7 @@ def parse_w2_fields(text: str) -> dict[str, float | list[tuple[str, float]] | No
     }
 
 
-def validate_w2_fields(parsed: dict[str, float | list[tuple[str, float]] | None]) -> list[ValidationIssue]:
+def validate_w2_fields(parsed: ParsedW2) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
 
     required_numeric = [
@@ -211,7 +213,9 @@ def validate_w2_fields(parsed: dict[str, float | list[tuple[str, float]] | None]
                 ValidationIssue(
                     level="warn",
                     code="MISSING_FIELD",
-                    message=f"{field} was not detected. Verify OCR/parsing and source document quality.",
+                    message=(
+                        f"{field} was not detected. Verify OCR/parsing and source document quality."
+                    ),
                 )
             )
         elif isinstance(value, float) and value < 0:
@@ -219,7 +223,10 @@ def validate_w2_fields(parsed: dict[str, float | list[tuple[str, float]] | None]
                 ValidationIssue(
                     level="warn",
                     code="NEGATIVE_AMOUNT",
-                    message=f"{field} is negative ({value:.2f}), which is unusual for W-2 summary fields.",
+                    message=(
+                        f"{field} is negative ({value:.2f}), "
+                        "which is unusual for W-2 summary fields."
+                    ),
                 )
             )
 
@@ -234,7 +241,10 @@ def validate_w2_fields(parsed: dict[str, float | list[tuple[str, float]] | None]
                 ValidationIssue(
                     level="warn",
                     code="ZERO_WITHHOLDING",
-                    message="Box 2 is 0 while Box 1 is positive. Confirm withholding setup and payroll records.",
+                    message=(
+                        "Box 2 is 0 while Box 1 is positive. "
+                        "Confirm withholding setup and payroll records."
+                    ),
                 )
             )
         if box1 > 0 and box2 / box1 > 0.60:
@@ -242,7 +252,10 @@ def validate_w2_fields(parsed: dict[str, float | list[tuple[str, float]] | None]
                 ValidationIssue(
                     level="warn",
                     code="HIGH_WITHHOLDING_RATIO",
-                    message="Federal withholding appears very high relative to wages. Review for possible data issues.",
+                    message=(
+                        "Federal withholding appears very high relative to wages. "
+                        "Review for possible data issues."
+                    ),
                 )
             )
 

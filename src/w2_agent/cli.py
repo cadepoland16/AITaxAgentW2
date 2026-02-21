@@ -1,11 +1,12 @@
+from pathlib import Path
+
 import typer
-from rich.console import Console
 from langchain_chroma import Chroma
+from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PyPDFLoader
-from pathlib import Path
+from rich.console import Console
 
 from w2_agent.config import (
     DEFAULT_COLLECTION,
@@ -169,7 +170,9 @@ def ask(
     filtered = [(doc, score) for doc, score in docs_with_scores if score >= min_relevance]
     if not filtered:
         console.print("[yellow]Insufficient context quality for a grounded answer.[/yellow]")
-        console.print("Try lowering --min-relevance, adding better source docs, or re-running ingest.")
+        console.print(
+            "Try lowering --min-relevance, adding better source docs, or re-running ingest."
+        )
         raise typer.Exit(code=1)
 
     docs = [doc for doc, _ in filtered]
@@ -201,7 +204,11 @@ def ask(
     console.print("[green]Answer[/green]")
     console.print(str(response.content).strip())
     console.print("\n[green]Confidence[/green]")
-    console.print(f"{confidence} (top relevance: {max(scores):.3f}, avg relevance: {sum(scores)/len(scores):.3f})")
+    top_relevance = max(scores)
+    avg_relevance = sum(scores) / len(scores)
+    console.print(
+        f"{confidence} (top relevance: {top_relevance:.3f}, avg relevance: {avg_relevance:.3f})"
+    )
 
     if show_context:
         console.print("\n[green]Retrieved Context[/green]")

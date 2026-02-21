@@ -25,7 +25,7 @@ jobs:
 
       - name: Ruff check
         run: |
-          pip install ruff
+          pip install ruff==0.15.2
           ruff check src
 
       - name: CLI smoke test
