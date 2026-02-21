@@ -9,7 +9,8 @@ Local-first W-2 AI agent CLI built with Python, LangChain, Ollama, and Chroma.
 
 ## Current Status
 - Core CLI scaffold exists
-- Commands stubbed: `ingest`, `ask`, `validate`
+- `ingest` implemented with LangChain + Chroma + Ollama embeddings
+- `ask` and `validate` are still placeholders
 - Repository standards and CI baseline added
 
 ## Tech Stack
@@ -28,6 +29,15 @@ pip install setuptools wheel
 pip install -e .
 w2 --help
 ```
+
+## Build the RAG Index
+Place source tax guidance files (`.txt`, `.md`, `.pdf`) in `data/docs/`, then run:
+
+```bash
+w2 ingest data/docs
+```
+
+Default output is persisted to `data/vectorstore/`.
 
 ## Security and Privacy
 - W-2 files and PII must remain local and untracked

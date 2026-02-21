@@ -11,3 +11,8 @@ and this project aims to follow Semantic Versioning.
 - Typer CLI with placeholder commands (`ingest`, `ask`, `validate`)
 - Base configuration for local-first W-2 agent
 - Repository standards docs and CI/dependency automation
+
+## [0.1.1] - 2026-02-21
+### Added
+- Implemented `w2 ingest` for `.txt`, `.md`, and `.pdf` sources
+- Added local Chroma persistence and configurable collection option for ingestion
