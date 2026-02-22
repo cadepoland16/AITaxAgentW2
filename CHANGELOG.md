@@ -58,3 +58,8 @@ and this project aims to follow Semantic Versioning.
 - Added release readiness documentation (`docs/RELEASE.md`)
 - Added GitHub release note template (`.github/release_template.md`)
 - Added Homebrew post-MVP distribution plan (`docs/HOMEBREW_PLAN.md`)
+
+## [0.1.9] - 2026-02-21
+### Added
+- Added `w2 summary` command to quickly show tax year and Box 1 wages for a given W-2 file
+- Added CLI and parser tests for year detection and summary output behavior

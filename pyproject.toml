@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aitaxagentw2"
-version = "0.1.8"
+version = "0.1.9"
 description = "Local-first W-2 AI agent CLI using Python, LangChain, and Ollama"
 readme = "README.md"
 requires-python = ">=3.11"
