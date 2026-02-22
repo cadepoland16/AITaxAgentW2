@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from w2_agent.w2_validation import (
     _looks_like_low_quality_pdf_text,
+    detect_tax_year,
     parse_w2_fields,
     validate_w2_fields,
 )
@@ -93,3 +96,15 @@ def test_low_quality_pdf_text_heuristic_false_for_rich_w2_text() -> None:
         "5 Medicare wages and tips 52,345.67 "
     ) * 10
     assert _looks_like_low_quality_pdf_text(rich) is False
+
+
+def test_detect_tax_year_from_filename() -> None:
+    text = "Form W-2 Wage and Tax Statement"
+    year = detect_tax_year(Path("2025Cognizant Technology Solutions2025 W-2.pdf"), text)
+    assert year == 2025
+
+
+def test_detect_tax_year_from_text_when_filename_missing() -> None:
+    text = "W-2 Wage and Tax Statement 2024 Copy B"
+    year = detect_tax_year(Path("employee-w2.pdf"), text)
+    assert year == 2024

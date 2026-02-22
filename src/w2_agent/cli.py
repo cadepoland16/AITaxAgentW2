@@ -19,7 +19,12 @@ from w2_agent.config import (
     VECTOR_DIR,
     W2_DIR,
 )
-from w2_agent.w2_validation import load_w2_text, parse_w2_fields, validate_w2_fields
+from w2_agent.w2_validation import (
+    detect_tax_year,
+    load_w2_text,
+    parse_w2_fields,
+    validate_w2_fields,
+)
 
 app = typer.Typer(help="W-2 Agent CLI (local, LangChain, Ollama)")
 console = Console()
@@ -226,6 +231,34 @@ def ask(
     console.print(f"LLM model: {DEFAULT_LLM_MODEL}")
     console.print(f"Embedding model: {DEFAULT_EMBED_MODEL}")
     console.print(f"Collection: {collection}")
+
+
+@app.command()
+def summary(w2_file: str = typer.Option(..., "--w2-file")):
+    """Show quick W-2 summary (tax year + Box 1 wages)."""
+    file_path = Path(w2_file).expanduser().resolve()
+    if not file_path.exists() or not file_path.is_file():
+        console.print(f"[red]W-2 file not found:[/red] {file_path}")
+        raise typer.Exit(code=1)
+
+    try:
+        text = load_w2_text(file_path)
+    except Exception as exc:
+        console.print(f"[red]Could not read W-2 file:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    parsed = parse_w2_fields(text)
+    tax_year = detect_tax_year(file_path, text)
+    wages = parsed.get("box1_wages")
+
+    console.print("[green]W-2 Summary[/green]")
+    console.print(f"File: {file_path}")
+    console.print(f"Tax year: {tax_year if tax_year is not None else 'unknown'}")
+    if isinstance(wages, float):
+        console.print(f"Box 1 wages: ${wages:,.2f}")
+    else:
+        console.print("Box 1 wages: not detected")
+    console.print("Informational only, not tax advice.")
 
 
 @app.command()

@@ -38,3 +38,21 @@ def test_validate_command_missing_file() -> None:
     result = runner.invoke(app, ["validate", "--w2-file", "/tmp/does-not-exist.pdf"])
     assert result.exit_code == 1
     assert "W-2 file not found" in result.stdout
+
+
+def test_summary_command_with_text_file(tmp_path: Path) -> None:
+    sample = tmp_path / "2024_sample_w2.txt"
+    sample.write_text(
+        "\n".join(
+            [
+                "Form W-2 Wage and Tax Statement",
+                "1 Wages, tips, other compensation 12,345.67",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    result = runner.invoke(app, ["summary", "--w2-file", str(sample)])
+    assert result.exit_code == 0
+    assert "W-2 Summary" in result.stdout
+    assert "Tax year: 2024" in result.stdout
+    assert "Box 1 wages: $12,345.67" in result.stdout

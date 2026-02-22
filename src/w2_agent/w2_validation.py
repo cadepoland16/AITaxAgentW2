@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -81,6 +82,30 @@ def load_w2_text(path: Path) -> str:
                     return ocr_text
         return extracted
     raise ValueError("Unsupported file type. Use .pdf, .txt, or .md")
+
+
+def detect_tax_year(path: Path, text: str) -> int | None:
+    # Most reliable signal for this project is usually the input filename.
+    filename_match = re.search(r"(?<![0-9])(20[0-9]{2})(?![0-9])", path.name)
+    if filename_match:
+        return int(filename_match.group(1))
+
+    head = text[:3000]
+    patterns = [
+        r"\b(20[0-9]{2})\s*W-?2\b",
+        r"\bW-?2\s*(?:for\s*)?(20[0-9]{2})\b",
+        r"\bTax\s*Year[:\s]+(20[0-9]{2})\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, head, flags=re.IGNORECASE)
+        if match:
+            return int(match.group(1))
+
+    years = [int(year) for year in re.findall(r"(?<![0-9])(20[0-9]{2})(?![0-9])", head)]
+    if not years:
+        return None
+    counts = Counter(years)
+    return counts.most_common(1)[0][0]
 
 
 def _to_float(raw: str) -> float | None:

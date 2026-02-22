@@ -27,6 +27,7 @@ pip install -e .
 ```bash
 w2 ingest data/docs
 w2 ask "What does Box 12 code DD represent?"
+w2 summary --w2-file "W2s(Confidential)/2025Cognizant Technology Solutions2025 W-2.pdf"
 ```
 
 ## Goals
@@ -93,6 +94,14 @@ Optional OCR fallback dependencies (for scanned/image-heavy PDFs):
 pip install pdf2image pytesseract
 ```
 You may also need native Tesseract installed on your OS.
+
+## Quick W-2 Summary
+```bash
+w2 summary --w2-file "W2s(Confidential)/your-w2.pdf"
+```
+Shows:
+- Detected tax year
+- Box 1 wages (federal taxable wages)
 
 ## Run Tests
 ```bash
