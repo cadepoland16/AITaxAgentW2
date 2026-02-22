@@ -41,3 +41,8 @@ and this project aims to follow Semantic Versioning.
 - Added end-to-end demo runner script (`scripts/demo.sh`) for presentation flow
 - Added demo guide and expected outcomes (`demo/README.md`)
 - Added README demo section for quick execution
+
+## [0.1.6] - 2026-02-21
+### Added
+- Added first-time user onboarding section in README (`Install & Run`)
+- Added troubleshooting guidance for Ollama connectivity, install issues, and low-relevance retrieval

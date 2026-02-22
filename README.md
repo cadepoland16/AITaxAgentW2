@@ -2,6 +2,33 @@
 
 Local-first W-2 AI agent CLI built with Python, LangChain, Ollama, and Chroma.
 
+## Install & Run (New Users)
+### Prerequisites
+- Python 3.11+
+- Ollama installed (`https://ollama.com/download`)
+- Local models:
+```bash
+ollama pull nomic-embed-text
+ollama pull llama3.2
+```
+
+### Setup
+```bash
+git clone https://github.com/cadepoland16/AITaxAgentW2.git
+cd AITaxAgentW2
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install setuptools wheel
+pip install -e .
+```
+
+### First Run
+```bash
+w2 ingest data/docs
+w2 ask "What does Box 12 code DD represent?"
+```
+
 ## Goals
 - Keep sensitive tax data local by default
 - Use retrieval-augmented generation (RAG) for grounded W-2 guidance
@@ -80,6 +107,16 @@ This demonstrates:
 - Validation on a synthetic W-2 sample
 
 See `demo/README.md` for expected outputs.
+
+## Troubleshooting
+- `ConnectionError: Failed to connect to Ollama`:
+  Start/restart Ollama (`ollama serve`) and verify with `ollama list`.
+- `No matching distribution found` during install:
+  Check Python version and network access, then retry inside activated `.venv`.
+- `Insufficient context quality for a grounded answer`:
+  Ingest more relevant docs or lower threshold, e.g. `--min-relevance 0.20`.
+- Missing parsed W-2 fields:
+  Some scanned/substitute PDFs have poor text extraction; OCR fallback is a planned upgrade.
 
 ## Security and Privacy
 - W-2 files and PII must remain local and untracked
