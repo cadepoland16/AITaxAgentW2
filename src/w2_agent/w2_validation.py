@@ -24,13 +24,62 @@ class ValidationIssue:
 ParsedW2 = dict[str, float | list[tuple[str, float]] | None]
 
 
+def _looks_like_low_quality_pdf_text(text: str) -> bool:
+    normalized = _normalize(text)
+    if len(normalized) < 400:
+        return True
+    # Heuristic: a useful W-2 extraction should usually expose several anchor labels.
+    anchors = [
+        "wages",
+        "federal income tax withheld",
+        "social security wages",
+        "medicare wages",
+        "box 1",
+        "box 2",
+        "box 3",
+        "box 5",
+    ]
+    anchor_hits = sum(1 for anchor in anchors if anchor in normalized.lower())
+    return anchor_hits < 2
+
+
+def _ocr_pdf_text(path: Path) -> str | None:
+    # Optional fallback. Works only if both dependencies and native tesseract are available.
+    try:
+        import pytesseract  # type: ignore[import-not-found]
+        from pdf2image import convert_from_path  # type: ignore[import-not-found]
+    except Exception:
+        return None
+
+    try:
+        images = convert_from_path(str(path), dpi=300)
+    except Exception:
+        return None
+
+    pages: list[str] = []
+    for image in images:
+        try:
+            pages.append(pytesseract.image_to_string(image))
+        except Exception:
+            continue
+    joined = "\n".join(pages).strip()
+    return joined if joined else None
+
+
 def load_w2_text(path: Path) -> str:
     suffix = path.suffix.lower()
     if suffix in {".txt", ".md"}:
         return path.read_text(encoding="utf-8", errors="ignore")
     if suffix == ".pdf":
         docs = PyPDFLoader(str(path)).load()
-        return "\n".join(doc.page_content for doc in docs)
+        extracted = "\n".join(doc.page_content for doc in docs)
+        if _looks_like_low_quality_pdf_text(extracted):
+            ocr_text = _ocr_pdf_text(path)
+            if ocr_text:
+                # Prefer OCR only when it appears materially better.
+                if len(_normalize(ocr_text)) > len(_normalize(extracted)) * 0.75:
+                    return ocr_text
+        return extracted
     raise ValueError("Unsupported file type. Use .pdf, .txt, or .md")
 
 

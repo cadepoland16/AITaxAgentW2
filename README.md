@@ -86,7 +86,13 @@ w2 ask "What does Box 12 code DD represent?" --top-k 5 --min-relevance 0.30
 w2 validate --w2-file "W2s(Confidential)/your-w2.pdf" --show-parsed
 ```
 The command parses core fields and prints warning-style checks for review.
-Extraction quality depends on PDF text readability; image-heavy/scanned layouts may still require OCR improvements.
+Extraction quality depends on PDF text readability.
+
+Optional OCR fallback dependencies (for scanned/image-heavy PDFs):
+```bash
+pip install pdf2image pytesseract
+```
+You may also need native Tesseract installed on your OS.
 
 ## Run Tests
 ```bash
@@ -116,7 +122,7 @@ See `demo/README.md` for expected outputs.
 - `Insufficient context quality for a grounded answer`:
   Ingest more relevant docs or lower threshold, e.g. `--min-relevance 0.20`.
 - Missing parsed W-2 fields:
-  Some scanned/substitute PDFs have poor text extraction; OCR fallback is a planned upgrade.
+  Install optional OCR deps (`pdf2image`, `pytesseract`) and ensure Tesseract is available.
 
 ## Security and Privacy
 - W-2 files and PII must remain local and untracked

@@ -46,3 +46,9 @@ and this project aims to follow Semantic Versioning.
 ### Added
 - Added first-time user onboarding section in README (`Install & Run`)
 - Added troubleshooting guidance for Ollama connectivity, install issues, and low-relevance retrieval
+
+## [0.1.7] - 2026-02-21
+### Improved
+- Added low-quality PDF detection heuristic in W-2 text loading
+- Added optional OCR fallback path (`pdf2image` + `pytesseract`) for scanned/image-heavy PDFs
+- Added unit tests for extraction-quality heuristic behavior

@@ -1,4 +1,8 @@
-from w2_agent.w2_validation import parse_w2_fields, validate_w2_fields
+from w2_agent.w2_validation import (
+    _looks_like_low_quality_pdf_text,
+    parse_w2_fields,
+    validate_w2_fields,
+)
 
 
 def test_parse_w2_fields_extracts_core_boxes_and_codes() -> None:
@@ -74,3 +78,18 @@ def test_validate_w2_fields_flags_extreme_withholding_ratio() -> None:
     codes = {issue.code for issue in issues}
 
     assert "HIGH_WITHHOLDING_RATIO" in codes
+
+
+def test_low_quality_pdf_text_heuristic_true_for_sparse_text() -> None:
+    sparse = "W-2\nCopy B\n2025\nEmployee Reference Copy"
+    assert _looks_like_low_quality_pdf_text(sparse) is True
+
+
+def test_low_quality_pdf_text_heuristic_false_for_rich_w2_text() -> None:
+    rich = (
+        "Form W-2 1 Wages, tips, other compensation 52,345.67 "
+        "2 Federal income tax withheld 6,789.01 "
+        "3 Social security wages 52,345.67 "
+        "5 Medicare wages and tips 52,345.67 "
+    ) * 10
+    assert _looks_like_low_quality_pdf_text(rich) is False
