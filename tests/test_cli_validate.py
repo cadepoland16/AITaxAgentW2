@@ -4,7 +4,6 @@ from typer.testing import CliRunner
 
 from w2_agent.cli import app
 
-
 runner = CliRunner()
 
 

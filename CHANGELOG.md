@@ -35,3 +35,9 @@ and this project aims to follow Semantic Versioning.
 ### Added
 - Added pytest-based Step 8 test coverage for W-2 parsing, validation rules, and CLI validate behavior
 - Added CI pytest step to run tests on pushes and pull requests
+
+## [0.1.5] - 2026-02-21
+### Added
+- Added end-to-end demo runner script (`scripts/demo.sh`) for presentation flow
+- Added demo guide and expected outcomes (`demo/README.md`)
+- Added README demo section for quick execution

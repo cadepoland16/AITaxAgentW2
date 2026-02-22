@@ -67,6 +67,20 @@ pytest -q
 ```
 Includes unit tests for parsing/validation logic and CLI validation smoke tests.
 
+## Demo (Step 9)
+Quick demo:
+```bash
+./scripts/demo.sh
+```
+
+This demonstrates:
+- Local ingestion
+- Grounded Q&A with citations and confidence
+- Insufficient-context behavior
+- Validation on a synthetic W-2 sample
+
+See `demo/README.md` for expected outputs.
+
 ## Security and Privacy
 - W-2 files and PII must remain local and untracked
 - `W2s(Confidential)/` is gitignored
