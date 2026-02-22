@@ -114,6 +114,11 @@ This demonstrates:
 
 See `demo/README.md` for expected outputs.
 
+## Release and Distribution
+- Release checklist: `docs/RELEASE.md`
+- GitHub release notes template: `.github/release_template.md`
+- Homebrew post-MVP plan: `docs/HOMEBREW_PLAN.md`
+
 ## Troubleshooting
 - `ConnectionError: Failed to connect to Ollama`:
   Start/restart Ollama (`ollama serve`) and verify with `ollama list`.

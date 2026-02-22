@@ -52,3 +52,9 @@ and this project aims to follow Semantic Versioning.
 - Added low-quality PDF detection heuristic in W-2 text loading
 - Added optional OCR fallback path (`pdf2image` + `pytesseract`) for scanned/image-heavy PDFs
 - Added unit tests for extraction-quality heuristic behavior
+
+## [0.1.8] - 2026-02-21
+### Added
+- Added release readiness documentation (`docs/RELEASE.md`)
+- Added GitHub release note template (`.github/release_template.md`)
+- Added Homebrew post-MVP distribution plan (`docs/HOMEBREW_PLAN.md`)

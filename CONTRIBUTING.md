@@ -19,6 +19,10 @@ w2 --help
 3. Include clear commit messages and update docs when behavior changes.
 4. Ensure CI is passing.
 
+## Release Process
+- Follow `docs/RELEASE.md` for release gating, tagging, and post-release checks.
+- Use `.github/release_template.md` when drafting GitHub release notes.
+
 ## Coding Standards
 - Use clear naming and type hints where practical.
 - Keep user data private; do not commit W-2 files or any PII.
