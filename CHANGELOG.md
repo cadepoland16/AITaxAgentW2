@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog,
 and this project aims to follow Semantic Versioning.
 
+## [0.1.10] - 2026-02-23
+### Added
+- Added `w2 checklist` command to generate actionable filing guidance from a W-2 file
+- Added checklist output sections for detected signals, action items, and follow-up questions
+- Added CLI and validation tests for checklist behavior
+
 ## [0.1.0] - 2026-02-20
 ### Added
 - Initial Python project scaffold
