@@ -3,6 +3,7 @@ from pathlib import Path
 from w2_agent.w2_validation import (
     _looks_like_low_quality_pdf_text,
     _substitute_form_fallback_amounts,
+    build_w2_checklist,
     detect_tax_year,
     parse_w2_fields,
     validate_w2_fields,
@@ -143,3 +144,23 @@ def test_parse_w2_fields_prefers_reported_w2_wages_for_box1() -> None:
     )
     parsed = parse_w2_fields(text)
     assert parsed["box1_wages"] == 5178.43
+
+
+def test_build_w2_checklist_contains_expected_sections() -> None:
+    parsed = {
+        "box1_wages": 5178.43,
+        "box2_fed_withholding": 538.72,
+        "box3_ss_wages": 5178.43,
+        "box5_medicare_wages": 5178.43,
+        "state_wages": None,
+        "state_withholding": None,
+        "local_wages": None,
+        "local_withholding": None,
+        "box12_codes": [],
+    }
+    issues = validate_w2_fields(parsed)
+    checklist = build_w2_checklist(parsed, issues)
+
+    assert len(checklist.action_items) > 0
+    assert len(checklist.follow_up_questions) > 0
+    assert any("Box 1 wages detected" in item for item in checklist.detected_signals)

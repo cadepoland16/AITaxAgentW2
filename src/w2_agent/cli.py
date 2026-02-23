@@ -20,6 +20,7 @@ from w2_agent.config import (
     W2_DIR,
 )
 from w2_agent.w2_validation import (
+    build_w2_checklist,
     detect_tax_year,
     load_w2_text,
     parse_w2_fields,
@@ -259,6 +260,57 @@ def summary(w2_file: str = typer.Option(..., "--w2-file")):
     else:
         console.print("Box 1 wages: not detected")
     console.print("Informational only, not tax advice.")
+
+
+@app.command()
+def checklist(
+    w2_file: str = typer.Option(..., "--w2-file"),
+    show_parsed: bool = typer.Option(False, "--show-parsed"),
+):
+    """Generate actionable filing checklist from a W-2 file."""
+    file_path = Path(w2_file).expanduser().resolve()
+    if not file_path.exists() or not file_path.is_file():
+        console.print(f"[red]W-2 file not found:[/red] {file_path}")
+        raise typer.Exit(code=1)
+
+    try:
+        text = load_w2_text(file_path)
+    except Exception as exc:
+        console.print(f"[red]Could not read W-2 file:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    parsed = parse_w2_fields(text)
+    issues = validate_w2_fields(parsed)
+    tax_year = detect_tax_year(file_path, text)
+    checklist_result = build_w2_checklist(parsed, issues)
+
+    console.print("[green]W-2 Checklist[/green]")
+    console.print(f"File: {file_path}")
+    console.print(f"Tax year: {tax_year if tax_year is not None else 'unknown'}")
+    console.print(f"Validation issues: {len(issues)}")
+
+    if show_parsed:
+        console.print("\n[green]Parsed Fields[/green]")
+        for key, value in parsed.items():
+            if key == "box12_codes" and isinstance(value, list):
+                rendered = ", ".join(f"{code}={amount:.2f}" for code, amount in value) or "(none)"
+                console.print(f"- {key}: {rendered}")
+            else:
+                console.print(f"- {key}: {value}")
+
+    console.print("\n[green]Detected Signals[/green]")
+    for item in checklist_result.detected_signals:
+        console.print(f"- {item}")
+
+    console.print("\n[green]Action Items[/green]")
+    for item in checklist_result.action_items:
+        console.print(f"- {item}")
+
+    console.print("\n[green]Follow-up Questions[/green]")
+    for item in checklist_result.follow_up_questions:
+        console.print(f"- {item}")
+
+    console.print("\nInformational only, not tax advice.")
 
 
 @app.command()

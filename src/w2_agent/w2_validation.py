@@ -25,6 +25,13 @@ class ValidationIssue:
 ParsedW2 = dict[str, float | list[tuple[str, float]] | None]
 
 
+@dataclass
+class ChecklistResult:
+    action_items: list[str]
+    follow_up_questions: list[str]
+    detected_signals: list[str]
+
+
 def _looks_like_low_quality_pdf_text(text: str) -> bool:
     normalized = _normalize(text)
     if len(normalized) < 400:
@@ -440,3 +447,89 @@ def validate_w2_fields(parsed: ParsedW2) -> list[ValidationIssue]:
         )
 
     return issues
+
+
+def build_w2_checklist(parsed: ParsedW2, issues: list[ValidationIssue]) -> ChecklistResult:
+    action_items: list[str] = [
+        "Verify taxpayer identity details and employer EIN match payroll records.",
+        "Enter W-2 Box 1 and Box 2 values into your filing workflow/software.",
+        "Retain paystubs and this W-2 copy with your tax records.",
+    ]
+    follow_up_questions: list[str] = []
+    detected_signals: list[str] = []
+
+    box1 = parsed.get("box1_wages")
+    box2 = parsed.get("box2_fed_withholding")
+    box3 = parsed.get("box3_ss_wages")
+    box5 = parsed.get("box5_medicare_wages")
+    box12 = parsed.get("box12_codes")
+    state_wh = parsed.get("state_withholding")
+    state_wages = parsed.get("state_wages")
+    local_wh = parsed.get("local_withholding")
+
+    if isinstance(box1, float):
+        detected_signals.append(f"Box 1 wages detected: ${box1:,.2f}")
+    else:
+        follow_up_questions.append("What is the confirmed Box 1 wages amount from payroll?")
+
+    if isinstance(box2, float):
+        detected_signals.append(f"Box 2 withholding detected: ${box2:,.2f}")
+        if isinstance(box1, float) and box1 > 0 and box2 == 0:
+            follow_up_questions.append(
+                "Was your federal withholding intentionally set to zero on your W-4?"
+            )
+    else:
+        follow_up_questions.append(
+            "Can you confirm federal withholding (Box 2) from payroll records?"
+        )
+
+    if isinstance(box3, float) and isinstance(box5, float):
+        detected_signals.append(
+            f"Social Security/Medicare wage bases detected: ${box3:,.2f} / ${box5:,.2f}"
+        )
+    else:
+        follow_up_questions.append(
+            "Are Box 3 and Box 5 values legible on your W-2, or should you use payroll statements?"
+        )
+
+    if isinstance(box12, list) and box12:
+        rendered_codes = ", ".join(f"{code}=${amount:,.2f}" for code, amount in box12)
+        detected_signals.append(f"Box 12 codes detected: {rendered_codes}")
+        action_items.append("Review Box 12 codes for retirement/HSA/benefit treatment in filing.")
+    else:
+        follow_up_questions.append("Does your W-2 include any Box 12 codes that were not parsed?")
+
+    if isinstance(state_wh, float):
+        detected_signals.append(f"State withholding detected: ${state_wh:,.2f}")
+        action_items.append("Confirm state return requirements for your resident/work state.")
+        if state_wages is None:
+            follow_up_questions.append("Can you confirm state wages (Box 16) from the W-2 form?")
+
+    if isinstance(local_wh, float):
+        detected_signals.append(f"Local withholding detected: ${local_wh:,.2f}")
+        action_items.append("Check whether a local/city return is required.")
+
+    issue_codes = {issue.code for issue in issues}
+    if "MISSING_FIELD" in issue_codes:
+        action_items.append(
+            "Review scanned PDF quality or use OCR-enabled parsing for missing fields."
+        )
+    if "STATE_MISSING_WAGES" in issue_codes:
+        action_items.append("Manually confirm state wages before filing state return.")
+
+    # Keep ordering stable while removing duplicates.
+    def _dedupe(items: list[str]) -> list[str]:
+        seen: set[str] = set()
+        result: list[str] = []
+        for item in items:
+            if item in seen:
+                continue
+            seen.add(item)
+            result.append(item)
+        return result
+
+    return ChecklistResult(
+        action_items=_dedupe(action_items),
+        follow_up_questions=_dedupe(follow_up_questions),
+        detected_signals=_dedupe(detected_signals),
+    )
