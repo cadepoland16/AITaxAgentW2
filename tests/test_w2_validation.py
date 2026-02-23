@@ -2,6 +2,7 @@ from pathlib import Path
 
 from w2_agent.w2_validation import (
     _looks_like_low_quality_pdf_text,
+    _substitute_form_fallback_amounts,
     detect_tax_year,
     parse_w2_fields,
     validate_w2_fields,
@@ -108,3 +109,37 @@ def test_detect_tax_year_from_text_when_filename_missing() -> None:
     text = "W-2 Wage and Tax Statement 2024 Copy B"
     year = detect_tax_year(Path("employee-w2.pdf"), text)
     assert year == 2024
+
+
+def test_substitute_form_fallback_amounts_extracts_candidates() -> None:
+    text = (
+        "W-2 Copy B Employee Reference Copy "
+        "5178.43 538.72 5178.43 5178.43 538.72 5178.43 "
+        "5178.43 538.72 5178.43"
+    )
+    wage, withholding = _substitute_form_fallback_amounts(text)
+    assert wage == 5178.43
+    assert withholding == 538.72
+
+
+def test_parse_w2_fields_uses_substitute_fallback_for_missing_boxes() -> None:
+    text = (
+        "W-2 Employee Reference Copy Copy B "
+        "5178.43 538.72 5178.43 5178.43 538.72 5178.43 "
+        "5178.43 538.72 5178.43"
+    )
+    parsed = parse_w2_fields(text)
+    assert parsed["box2_fed_withholding"] == 538.72
+    assert parsed["box3_ss_wages"] == 5178.43
+    assert parsed["box5_medicare_wages"] == 5178.43
+
+
+def test_parse_w2_fields_prefers_reported_w2_wages_for_box1() -> None:
+    text = (
+        "W-2 Employee Reference Copy Copy B "
+        "Box 1 of W-2 5 262 70 "
+        "Reported W-2 Wages 5,178.43 "
+        "5178.43 538.72 5178.43 5178.43 538.72 5178.43"
+    )
+    parsed = parse_w2_fields(text)
+    assert parsed["box1_wages"] == 5178.43

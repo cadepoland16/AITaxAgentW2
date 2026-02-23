@@ -199,6 +199,47 @@ def _extract_box12_codes(text: str) -> list[tuple[str, float]]:
     return deduped
 
 
+def _extract_reported_w2_wages(text: str) -> float | None:
+    patterns = [
+        rf"reported\s*w-?2\s*wages[^0-9$]{{0,50}}\$?{_AMOUNT_PATTERN}",
+        rf"reported\s*w2\s*wages[^0-9$]{{0,50}}\$?{_AMOUNT_PATTERN}",
+    ]
+    return _first_amount_match(_normalize(text), patterns)
+
+
+def _substitute_form_fallback_amounts(text: str) -> tuple[float | None, float | None]:
+    lowered = text.lower()
+    if "w-2" not in lowered:
+        return None, None
+    if "copy b" not in lowered and "employee reference copy" not in lowered:
+        return None, None
+
+    values: list[float] = []
+    for match in re.findall(_AMOUNT_PATTERN, text):
+        value = _to_float(match)
+        if value is None:
+            continue
+        if value <= 0:
+            continue
+        values.append(value)
+    if not values:
+        return None, None
+
+    counts = Counter(values)
+    repeated = [(amount, count) for amount, count in counts.items() if count >= 3]
+    if not repeated:
+        return None, None
+    repeated.sort(key=lambda item: (item[1], item[0]), reverse=True)
+
+    wage_candidate = repeated[0][0]
+    withholding_candidate: float | None = None
+    for amount, _count in repeated[1:]:
+        if amount < wage_candidate * 0.8:
+            withholding_candidate = amount
+            break
+    return wage_candidate, withholding_candidate
+
+
 def parse_w2_fields(text: str) -> dict[str, float | list[tuple[str, float]] | None]:
     box1 = _extract_by_keywords(
         text,
@@ -258,7 +299,7 @@ def parse_w2_fields(text: str) -> dict[str, float | list[tuple[str, float]] | No
         ],
     )
 
-    return {
+    parsed: dict[str, float | list[tuple[str, float]] | None] = {
         "box1_wages": box1,
         "box2_fed_withholding": box2,
         "box3_ss_wages": box3,
@@ -269,6 +310,22 @@ def parse_w2_fields(text: str) -> dict[str, float | list[tuple[str, float]] | No
         "local_withholding": local_withholding,
         "box12_codes": _extract_box12_codes(text),
     }
+
+    # Fallback for substitute W-2 layouts where label/value pairing is fragmented.
+    reported_w2_wages = _extract_reported_w2_wages(text)
+    if isinstance(reported_w2_wages, float):
+        parsed["box1_wages"] = reported_w2_wages
+
+    wage_candidate, withholding_candidate = _substitute_form_fallback_amounts(text)
+    if isinstance(wage_candidate, float):
+        if parsed["box3_ss_wages"] is None:
+            parsed["box3_ss_wages"] = wage_candidate
+        if parsed["box5_medicare_wages"] is None:
+            parsed["box5_medicare_wages"] = wage_candidate
+    if isinstance(withholding_candidate, float) and parsed["box2_fed_withholding"] is None:
+        parsed["box2_fed_withholding"] = withholding_candidate
+
+    return parsed
 
 
 def validate_w2_fields(parsed: ParsedW2) -> list[ValidationIssue]:
