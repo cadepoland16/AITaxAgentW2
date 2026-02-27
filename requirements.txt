@@ -69,7 +69,7 @@ orjson==3.11.7
 ormsgpack==1.12.2
 overrides==7.7.0
 packaging==26.0
-posthog==5.4.0
+posthog==7.9.4
 propcache==0.4.1
 protobuf==6.33.5
 pybase64==1.4.3
